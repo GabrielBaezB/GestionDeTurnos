@@ -20,7 +20,7 @@ def test_create_ticket(client: TestClient, session):
     # Assert: Check Response
     assert response.status_code == 200
     data = response.json()
-    assert data["number"] == "V-1" # Redis or SQL logic might return 1 not 001 depending on implementation
+    assert data["number"] == "V-001"
     assert data["queue_id"] == queue.id 
     assert data["status"] == "waiting"
 
