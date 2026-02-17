@@ -1,7 +1,7 @@
 
-import pytest
+import pytest_asyncio
 from typing import AsyncGenerator, Generator
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from sqlmodel import Session, SQLModel, create_engine
 from backend.app.main import app
 from backend.app.core.config import settings
@@ -18,14 +18,16 @@ def session_fixture() -> Generator[Session, None, None]:
         yield session
     SQLModel.metadata.drop_all(engine)
 
-@pytest.fixture(name="client")
+@pytest_asyncio.fixture(name="client", loop_scope="function")
 async def client_fixture(session: Session) -> AsyncGenerator[AsyncClient, None]:
     def get_session_override():
         return session
 
     app.dependency_overrides[get_session] = get_session_override
     
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    # Use ASGITransport for newer httpx versions to avoid warnings
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
     
     app.dependency_overrides.clear()
