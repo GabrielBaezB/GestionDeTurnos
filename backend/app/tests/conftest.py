@@ -3,6 +3,7 @@ import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.pool import StaticPool
 from backend.app.main import app
 from backend.app.core.config import settings
 from backend.app.core.database import get_session
@@ -10,7 +11,12 @@ from backend.app.core.database import get_session
 # Use in-memory SQLite for testing to ensure isolation
 TEST_DATABASE_URL = "sqlite:///:memory:"
 # check_same_thread=False is needed for SQLite with multiple threads (FastAPI)
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+# StaticPool ensures the same in-memory DB is used across connections
+engine = create_engine(
+    TEST_DATABASE_URL, 
+    connect_args={"check_same_thread": False}, 
+    poolclass=StaticPool
+)
 
 @pytest.fixture(name="session")
 def session_fixture() -> Generator[Session, None, None]:
