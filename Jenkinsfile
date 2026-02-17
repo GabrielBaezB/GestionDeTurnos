@@ -11,9 +11,10 @@ pipeline {
             steps {
                 script {
                     echo 'Building and Installing Dependencies...'
-                    // In a real environment, you might use a Docker agent.
-                    // Here we assume Python is available or running inside a container.
-                    sh 'pip install --no-cache-dir -r requirements.txt'
+                    // Create virtual environment to comply with PEP 668
+                    sh 'python3 -m venv venv'
+                    // Install dependencies into venv
+                    sh 'venv/bin/pip install --no-cache-dir -r requirements.txt'
                 }
             }
         }
@@ -21,10 +22,8 @@ pipeline {
         stage('Linting') {
             steps {
                 script {
-                    echo 'Running Linting (Ruff)...'
-                    // Ensure ruff is installed (via requirements or separately)
-                    // Continue even if linting fails? Or fail fast?
-                    // For now, we just echo. In prod: sh 'ruff check .'
+                    echo 'Running Linting...'
+                    // Example: sh 'venv/bin/ruff check .'
                     sh 'echo Linting passed'
                 }
             }
@@ -34,8 +33,8 @@ pipeline {
             steps {
                 script {
                     echo 'Running Unit Tests with Coverage...'
-                    // Run pytest and generate XML report for SonarQube
-                    sh 'pytest --cov=backend/app --cov-report=xml:coverage.xml'
+                    // Run pytest using the venv executable
+                    sh 'venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
                 }
             }
         }
