@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroQrobo — Panel de Administración</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: #0f111a;
+            min-height: 100vh;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .sidebar {
+            background: #131620;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            min-height: calc(100vh - 56px);
+        }
+
+        .sidebar .nav-link {
+            color: #94a3b8;
+            border-radius: 0.5rem;
+            padding: 0.7rem 1rem;
+            margin-bottom: 3px;
+            transition: all 0.2s;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: rgba(99, 102, 241, 0.12);
+            color: #fff;
+        }
+
+        .sidebar .nav-link.active {
+            border-left: 3px solid #6366f1;
+        }
+
+        .sidebar .nav-link i {
+            width: 24px;
+            text-align: center;
+            margin-right: 0.5rem;
+        }
+
+        .content-area {
+            background: #0f111a;
+            min-height: calc(100vh - 56px);
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1rem;
+        }
+
+        .list-item-row {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .list-item-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .queue-tag {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .queue-check-label {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.5rem 0.8rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .queue-check-label:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-content {
+            background: #1a1d2e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Login overlay */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(145deg, #0b0f1a, #1a1040, #0f172a);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card-custom {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .brand-gradient {
+            background: linear-gradient(135deg, #a78bfa, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- LOGIN OVERLAY -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card-custom">
+            <h2 class="text-center mb-1 fw-bold">🔐 Admin Login</h2>
+            <p class="text-center text-secondary mb-4">Panel de administración ZeroQrobo</p>
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Usuario (Email)</label>
+                <input type="text" id="login-username"
+                    class="form-control form-control-lg bg-dark border-secondary text-light"
+                    placeholder="admin@zeroq.cl">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Contraseña</label>
+                <input type="password" id="login-password"
+                    class="form-control form-control-lg bg-dark border-secondary text-light" placeholder="••••••••"
+                    onkeydown="if(event.key==='Enter')dologin()">
+            </div>
+            <button class="btn btn-primary btn-lg w-100" onclick="dologin()">
+                <i class="bi bi-box-arrow-in-right"></i> Ingresar
+            </button>
+            <p id="login-error" class="text-danger text-center mt-3 mb-0 d-none"></p>
+            <p class="text-center text-secondary small mt-3 mb-0">Default: admin@zeroq.cl / admin</p>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark"
+        style="background: #131620; border-bottom: 1px solid rgba(255,255,255,0.06);">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">⚡ <span class="brand-gradient">ZeroQrobo</span> Admin</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMobile">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="d-none d-lg-flex ms-auto gap-2">
+                <a href="/monitor" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-tv"></i>
+                    Monitor</a>
+                <a href="/kiosk" target="_blank" class="btn btn-outline-secondary btn-sm"><i
+                        class="bi bi-ticket-perforated"></i> Kiosco</a>
+                <a href="/" class="btn btn-outline-secondary btn-sm"><i class="bi bi-house"></i> Portal</a>
+                <button class="btn btn-outline-danger btn-sm" onclick="logout()"><i class="bi bi-box-arrow-right"></i>
+                    Salir</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- LAYOUT -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- SIDEBAR DESKTOP -->
+            <div class="col-lg-2 d-none d-lg-block sidebar p-3">
+                <nav class="nav flex-column mt-2">
+                    <a class="nav-link active" href="#" onclick="showSection('modules', this)">
+                        <i class="bi bi-building"></i> Módulos
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('queues', this)">
+                        <i class="bi bi-list-task"></i> Trámites
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('operators', this)">
+                        <i class="bi bi-people"></i> Operadores
+                    </a>
+                    <a class="nav-link" href="#" onclick="showSection('active-ops', this)">
+                        <i class="bi bi-activity"></i> Activos
+                    </a>
+                </nav>
+            </div>
+
+            <!-- SIDEBAR MOBILE (Offcanvas) -->
+            <div class="offcanvas offcanvas-start d-lg-none" tabindex="-1" id="sidebarMobile"
+                style="background: #131620; max-width: 280px;">
+                <div class="offcanvas-header">
+                    <h5 class="offcanvas-title">⚡ Navegación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+                </div>
+                <div class="offcanvas-body">
+                    <nav class="nav flex-column">
+                        <a class="nav-link active" href="#" onclick="showSection('modules', this)"
+                            data-bs-dismiss="offcanvas">
+                            <i class="bi bi-building"></i> Módulos
+                        </a>
+                        <a class="nav-link" href="#" onclick="showSection('queues', this)" data-bs-dismiss="offcanvas">
+                            <i class="bi bi-list-task"></i> Trámites
+                        </a>
+                        <a class="nav-link" href="#" onclick="showSection('operators', this)"
+                            data-bs-dismiss="offcanvas">
+                            <i class="bi bi-people"></i> Operadores
+                        </a>
+                        <a class="nav-link" href="#" onclick="showSection('active-ops', this)"
+                            data-bs-dismiss="offcanvas">
+                            <i class="bi bi-activity"></i> Activos
+                        </a>
+                        <hr class="border-secondary">
+                        <a href="/monitor" target="_blank" class="nav-link text-secondary"><i class="bi bi-tv"></i>
+                            Monitor</a>
+                        <a href="/kiosk" target="_blank" class="nav-link text-secondary"><i
+                                class="bi bi-ticket-perforated"></i> Kiosco</a>
+                        <a href="/" class="nav-link text-secondary"><i class="bi bi-house"></i> Portal</a>
+                        <a href="#" class="nav-link text-danger" onclick="logout()"><i
+                                class="bi bi-box-arrow-right"></i> Salir</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- CONTENT -->
+            <div class="col-lg-10 content-area p-4">
+
+                <!-- MODULES -->
+                <div id="section-modules" class="section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h3 class="fw-bold text-light mb-1"><i class="bi bi-building text-primary"></i> Gestión de
+                                Módulos</h3>
+                            <p class="text-secondary mb-0">Mesones de atención (ej: Mesón 1, Caja)</p>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-8 col-md-6">
+                            <input type="text" id="module-name" class="form-control bg-dark border-secondary text-light"
+                                placeholder="Nombre del módulo">
+                        </div>
+                        <div class="col-sm-4 col-md-3">
+                            <button class="btn btn-primary w-100" onclick="createModule()"><i class="bi bi-plus-lg"></i>
+                                Crear</button>
+                        </div>
+                    </div>
+                    <div id="module-list" class="d-flex flex-column gap-2"></div>
+                </div>
+
+                <!-- QUEUES -->
+                <div id="section-queues" class="section d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 class="fw-bold text-light mb-1"><i class="bi bi-list-task text-primary"></i> Gestión de
+                                Trámites</h3>
+                            <p class="text-secondary mb-0">Define tipos de atención y prefijos</p>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm" onclick="resetQueue()"><i
+                                class="bi bi-arrow-clockwise"></i> Resetear Cola</button>
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-5">
+                            <input type="text" id="queue-name" class="form-control bg-dark border-secondary text-light"
+                                placeholder="Nombre (ej: Ventas)">
+                        </div>
+                        <div class="col-sm-3">
+                            <input type="text" id="queue-prefix"
+                                class="form-control bg-dark border-secondary text-light" placeholder="Prefijo (ej: V)"
+                                maxlength="2">
+                        </div>
+                        <div class="col-sm-4 col-md-3">
+                            <button class="btn btn-primary w-100" onclick="createQueue()"><i class="bi bi-plus-lg"></i>
+                                Crear</button>
+                        </div>
+                    </div>
+                    <div id="queue-list" class="d-flex flex-column gap-2"></div>
+                </div>
+
+                <!-- OPERATORS -->
+                <div id="section-operators" class="section d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 class="fw-bold text-light mb-1"><i class="bi bi-people text-primary"></i> Gestión de
+                                Operadores</h3>
+                            <p class="text-secondary mb-0">Acceso, permisos y trámites asignados</p>
+                        </div>
+                        <button class="btn btn-primary" onclick="openOpModal()"><i class="bi bi-person-plus"></i> Nuevo
+                            Operador</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle" style="background: transparent;">
+                            <thead>
+                                <tr class="text-secondary small text-uppercase">
+                                    <th>Nombre</th>
+                                    <th>Usuario</th>
+                                    <th>Trámites</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="operator-list"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ACTIVE OPS -->
+                <div id="section-active-ops" class="section d-none">
+                    <h3 class="fw-bold text-light mb-1"><i class="bi bi-activity text-success"></i> Operadores Activos
+                    </h3>
+                    <p class="text-secondary mb-4">Monitoreo en tiempo real</p>
+                    <div id="active-ops-grid" class="row g-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OPERATOR MODAL -->
+    <div class="modal fade" id="opModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fw-bold" id="modal-title">Nuevo Operador</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modal-op-id">
+
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Nombre Completo</label>
+                        <input type="text" id="modal-op-name" class="form-control bg-dark border-secondary text-light">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Usuario (Login)</label>
+                        <input type="text" id="modal-op-username"
+                            class="form-control bg-dark border-secondary text-light">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Contraseña</label>
+                        <input type="text" id="modal-op-pass" class="form-control bg-dark border-secondary text-light"
+                            placeholder="Vacío = sin cambiar">
+                        <small class="text-secondary">Obligatoria para nuevos operadores.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold">📋 Trámites asignados:</label>
+                        <div id="modal-queue-checks" class="d-flex flex-wrap gap-2 mt-1"></div>
+                    </div>
+
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="modal-op-active" checked>
+                        <label class="form-check-label text-light" for="modal-op-active">Cuenta Activa</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveOperator()"><i
+                            class="bi bi-check-lg"></i> Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '/api/v1';
+        let authToken = localStorage.getItem('zq_admin_token');
+        let currentOperators = [];
+        let allQueues = [];
+        let opModalInstance;
+
+        if (authToken) {
+            document.getElementById('login-overlay').style.display = 'none';
+            loadAll();
+        }
+
+        // ──────── Auth ────────
+        async function dologin() {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            const error = document.getElementById('login-error');
+            error.classList.add('d-none');
+            if (!user || !pass) { error.textContent = 'Ingrese credenciales'; error.classList.remove('d-none'); return; }
+
+            const formData = new URLSearchParams();
+            formData.append('username', user);
+            formData.append('password', pass);
+
+            try {
+                const res = await fetch(`${API_URL}/login/access-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData,
+                });
+                if (!res.ok) throw new Error('Credenciales inválidas');
+                const data = await res.json();
+                authToken = data.access_token;
+                localStorage.setItem('zq_admin_token', authToken);
+                document.getElementById('login-overlay').style.display = 'none';
+                loadAll();
+            } catch (e) {
+                error.textContent = e.message;
+                error.classList.remove('d-none');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('zq_admin_token');
+            location.reload();
+        }
+
+        async function authFetch(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            options.headers['Authorization'] = `Bearer ${authToken}`;
+            const res = await fetch(url, options);
+            if (res.status === 401) logout();
+            return res;
+        }
+
+        // ──────── Navigation ────────
+        function showSection(id, el) {
+            document.querySelectorAll('.section').forEach(s => {
+                s.classList.add('d-none');
+                s.classList.remove('d-block');
+            });
+            document.getElementById(`section-${id}`).classList.remove('d-none');
+
+            // Sidebar active state (both desktop & mobile)
+            document.querySelectorAll('.sidebar .nav-link, #sidebarMobile .nav-link').forEach(l => l.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            // Also sync the other sidebar
+            const sectionMap = { 'modules': 0, 'queues': 1, 'operators': 2, 'active-ops': 3 };
+            const idx = sectionMap[id];
+            if (idx !== undefined) {
+                document.querySelectorAll('.sidebar .nav-link')[idx]?.classList.add('active');
+                document.querySelectorAll('#sidebarMobile .nav-link')[idx]?.classList.add('active');
+            }
+
+            if (id === 'active-ops') loadActiveOps();
+            if (id === 'operators') loadOperators();
+        }
+
+        function loadAll() { loadModules(); loadQueues(); }
+
+        // ──────── Modules ────────
+        async function loadModules() {
+            try {
+                const res = await authFetch(`${API_URL}/modules/`);
+                const modules = await res.json();
+                const list = document.getElementById('module-list');
+                list.innerHTML = '';
+                modules.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item-row d-flex justify-content-between align-items-center p-3';
+                    div.innerHTML = `
+                        <div>
+                            <span class="fw-bold text-light">${m.name}</span>
+                            <span class="text-secondary small ms-2">ID: ${m.id}</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button onclick="editModule(${m.id}, '${m.name}')" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deleteModule(${m.id})" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function createModule() {
+            const name = document.getElementById('module-name').value.trim();
+            if (!name) return;
+            await authFetch(`${API_URL}/modules/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+            document.getElementById('module-name').value = '';
+            loadModules();
+        }
+
+        async function deleteModule(id) {
+            if (confirm('¿Eliminar módulo?')) { await authFetch(`${API_URL}/modules/${id}`, { method: 'DELETE' }); loadModules(); }
+        }
+
+        async function editModule(id, old) {
+            const n = prompt('Nombre:', old);
+            if (n) { await authFetch(`${API_URL}/modules/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: n }) }); loadModules(); }
+        }
+
+        // ──────── Queues ────────
+        async function loadQueues() {
+            try {
+                const res = await authFetch(`${API_URL}/queues/`);
+                allQueues = await res.json();
+                const list = document.getElementById('queue-list');
+                list.innerHTML = '';
+                allQueues.forEach(q => {
+                    const div = document.createElement('div');
+                    div.className = 'list-item-row d-flex justify-content-between align-items-center p-3';
+                    div.innerHTML = `
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary rounded-pill fw-bold">${q.prefix}</span>
+                            <span class="fw-bold text-light">${q.name}</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button onclick="editQueue(${q.id}, '${q.name}', '${q.prefix}')" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deleteQueue(${q.id})" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function createQueue() {
+            const name = document.getElementById('queue-name').value.trim();
+            const prefix = document.getElementById('queue-prefix').value.trim();
+            if (!name || !prefix) return;
+            await authFetch(`${API_URL}/queues/`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, prefix: prefix.toUpperCase(), is_active: true }) });
+            document.getElementById('queue-name').value = '';
+            document.getElementById('queue-prefix').value = '';
+            loadQueues();
+        }
+
+        async function deleteQueue(id) {
+            if (confirm('¿Eliminar trámite?')) { await authFetch(`${API_URL}/queues/${id}`, { method: 'DELETE' }); loadQueues(); }
+        }
+
+        async function editQueue(id, n, p) {
+            const nn = prompt('Nombre:', n); if (!nn) return;
+            const np = prompt('Prefijo:', p); if (!np) return;
+            await authFetch(`${API_URL}/queues/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: nn, prefix: np.toUpperCase() }) }); loadQueues();
+        }
+
+        async function resetQueue() {
+            if (confirm('¿Resetear todos los tickets en espera?')) {
+                await authFetch(`${API_URL}/tickets/reset-queue`, { method: 'POST' });
+                alert('Cola reseteada');
+            }
+        }
+
+        // ──────── Operators ────────
+        async function loadOperators() {
+            try {
+                const res = await authFetch(`${API_URL}/operators/`);
+                currentOperators = await res.json();
+
+                if (allQueues.length === 0) {
+                    const qRes = await authFetch(`${API_URL}/queues/`);
+                    allQueues = await qRes.json();
+                }
+
+                const tbody = document.getElementById('operator-list');
+                tbody.innerHTML = '';
+
+                currentOperators.forEach(op => {
+                    const queueTags = (op.queue_ids || [])
+                        .map(qid => {
+                            const q = allQueues.find(qq => qq.id === qid);
+                            return q ? `<span class="queue-tag">${q.name}</span>` : '';
+                        })
+                        .join(' ');
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="text-light fw-semibold">${op.name}</td>
+                        <td class="text-secondary">@${op.username}</td>
+                        <td>${queueTags || '<span class="text-secondary small">Sin asignar</span>'}</td>
+                        <td>
+                            <span class="badge ${op.is_active ? 'bg-success' : 'bg-danger'} bg-opacity-25 ${op.is_active ? 'text-success' : 'text-danger'}">
+                                ${op.is_active ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <button onclick="openOpModal(${op.id})" class="btn btn-sm btn-outline-secondary me-1"><i class="bi bi-pencil"></i></button>
+                            <button onclick="deleteOperator(${op.id})" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function openOpModal(id = null) {
+            if (allQueues.length === 0) {
+                const qRes = await authFetch(`${API_URL}/queues/`);
+                allQueues = await qRes.json();
+            }
+
+            document.getElementById('modal-op-id').value = id || '';
+            document.getElementById('modal-op-name').value = '';
+            document.getElementById('modal-op-username').value = '';
+            document.getElementById('modal-op-pass').value = '';
+            document.getElementById('modal-op-active').checked = true;
+
+            const checksContainer = document.getElementById('modal-queue-checks');
+            checksContainer.innerHTML = '';
+            let assignedQueueIds = [];
+
+            if (id) {
+                const op = currentOperators.find(o => o.id === id);
+                if (op) {
+                    document.getElementById('modal-title').textContent = 'Editar Operador';
+                    document.getElementById('modal-op-name').value = op.name;
+                    document.getElementById('modal-op-username').value = op.username;
+                    document.getElementById('modal-op-active').checked = op.is_active;
+                    assignedQueueIds = op.queue_ids || [];
+                }
+            } else {
+                document.getElementById('modal-title').textContent = 'Nuevo Operador';
+            }
+
+            allQueues.forEach(q => {
+                const label = document.createElement('label');
+                label.className = 'queue-check-label d-flex align-items-center gap-2';
+                const checked = assignedQueueIds.includes(q.id) ? 'checked' : '';
+                label.innerHTML = `<input type="checkbox" value="${q.id}" class="form-check-input modal-q-check" ${checked}> <span class="text-light">${q.name}</span>`;
+                checksContainer.appendChild(label);
+            });
+
+            if (!opModalInstance) {
+                opModalInstance = new bootstrap.Modal(document.getElementById('opModal'));
+            }
+            opModalInstance.show();
+        }
+
+        async function saveOperator() {
+            const id = document.getElementById('modal-op-id').value;
+            const name = document.getElementById('modal-op-name').value.trim();
+            const username = document.getElementById('modal-op-username').value.trim();
+            const pass = document.getElementById('modal-op-pass').value;
+            const isActive = document.getElementById('modal-op-active').checked;
+            const queueIds = Array.from(document.querySelectorAll('.modal-q-check:checked')).map(c => parseInt(c.value));
+
+            if (!name || !username) return alert('Nombre y Usuario requeridos');
+            if (!id && !pass) return alert('Contraseña requerida para nuevos');
+
+            const body = { name, username, is_active: isActive, queue_ids: queueIds };
+            if (pass) body.password = pass;
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/operators/${id}` : `${API_URL}/operators/`;
+
+            try {
+                const res = await authFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Error'); }
+                opModalInstance.hide();
+                loadOperators();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deleteOperator(id) {
+            if (confirm('¿Eliminar operador?')) { await authFetch(`${API_URL}/operators/${id}`, { method: 'DELETE' }); loadOperators(); }
+        }
+
+        // ──────── Active Ops ────────
+        async function loadActiveOps() {
+            try {
+                const res = await authFetch(`${API_URL}/tickets/active-sessions`);
+                const sessions = await res.json();
+                const grid = document.getElementById('active-ops-grid');
+                grid.innerHTML = '';
+                if (sessions.length === 0) {
+                    grid.innerHTML = '<div class="col-12"><p class="text-secondary">No hay operadores activos.</p></div>';
+                    return;
+                }
+                sessions.forEach(s => {
+                    const col = document.createElement('div');
+                    col.className = 'col-sm-6 col-md-4 col-lg-3';
+                    col.innerHTML = `
+                        <div class="stat-card text-center p-4">
+                            <div class="fs-1 fw-bold text-primary">${s.ticket_number}</div>
+                            <p class="text-secondary mb-0">Módulo ${s.module_id}</p>
+                        </div>
+                    `;
+                    grid.appendChild(col);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        setInterval(() => {
+            if (!document.getElementById('section-active-ops').classList.contains('d-none')) loadActiveOps();
+        }, 3000);
+    </script>
+</body>
+
+</html>

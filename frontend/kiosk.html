@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroQrobo — Tótem de Turnos</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(145deg, #0b0f1a 0%, #1a1040 35%, #0f172a 70%, #0b0f1a 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .kiosk-wrapper {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .brand-title {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .queue-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .queue-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            border-color: #a78bfa;
+        }
+
+        .queue-card .prefix {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #a78bfa;
+            line-height: 1;
+        }
+
+        .queue-card .label {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-top: 0.5rem;
+        }
+
+        /* Ticket overlay */
+        .ticket-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .ticket-number-display {
+            font-size: clamp(6rem, 20vw, 12rem);
+            font-weight: 800;
+            color: #a78bfa;
+            line-height: 1;
+            text-shadow: 0 0 40px rgba(167, 139, 250, 0.5), 0 0 80px rgba(167, 139, 250, 0.3);
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                text-shadow: 0 0 20px rgba(167, 139, 250, 0.4), 0 0 60px rgba(167, 139, 250, 0.2);
+            }
+
+            50% {
+                text-shadow: 0 0 40px rgba(167, 139, 250, 0.6), 0 0 100px rgba(167, 139, 250, 0.4);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="kiosk-wrapper">
+        <div class="text-center mb-5">
+            <h1 class="brand-title">⚡ ZeroQrobo</h1>
+            <p class="text-light fs-5 mt-2">Seleccione su trámite para obtener un turno</p>
+        </div>
+
+        <div id="queue-grid" class="row g-4 justify-content-center w-100" style="max-width: 900px;">
+            <div class="col-12 text-center">
+                <p class="text-secondary fs-5">Cargando trámites...</p>
+            </div>
+        </div>
+
+        <footer class="mt-5 text-center">
+            <a href="/" class="text-secondary text-decoration-none small">
+                <i class="bi bi-arrow-left"></i> Volver al Portal
+            </a>
+        </footer>
+    </div>
+
+    <!-- Ticket Result Overlay -->
+    <div id="ticket-overlay" class="ticket-overlay">
+        <div class="text-center">
+            <p class="text-light fs-3 mb-2">Su turno es:</p>
+            <div id="ticket-number" class="ticket-number-display">---</div>
+            <p class="text-secondary fs-5 mt-4">Espere a ser llamado en el monitor</p>
+            <button onclick="closeTicket()" class="btn btn-outline-light btn-lg mt-4 px-5">
+                <i class="bi bi-check-lg"></i> Aceptar
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '/api/v1';
+
+        async function loadQueues() {
+            try {
+                const res = await fetch(`${API_URL}/queues/`);
+                const queues = await res.json();
+                const grid = document.getElementById('queue-grid');
+                grid.innerHTML = '';
+
+                if (queues.length === 0) {
+                    grid.innerHTML = '<div class="col-12 text-center"><p class="text-secondary fs-5">No hay trámites configurados.</p></div>';
+                    return;
+                }
+
+                queues.filter(q => q.is_active).forEach(q => {
+                    const col = document.createElement('div');
+                    col.className = 'col-sm-6 col-md-4';
+                    col.innerHTML = `
+                        <div class="queue-card" onclick="requestTicket(${q.id}, '${q.name}')">
+                            <div class="prefix">${q.prefix}</div>
+                            <div class="label">${q.name}</div>
+                        </div>
+                    `;
+                    grid.appendChild(col);
+                });
+            } catch (e) {
+                console.error(e);
+                document.getElementById('queue-grid').innerHTML =
+                    '<div class="col-12 text-center"><p class="text-danger">Error al cargar trámites.</p></div>';
+            }
+        }
+
+        async function requestTicket(queueId, queueName) {
+            try {
+                const res = await fetch(`${API_URL}/tickets/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ queue_id: queueId }),
+                });
+                if (!res.ok) throw new Error('Error al crear ticket');
+                const ticket = await res.json();
+                document.getElementById('ticket-number').innerText = ticket.number;
+                document.getElementById('ticket-overlay').style.display = 'flex';
+                setTimeout(closeTicket, 8000);
+            } catch (e) {
+                alert('Error al solicitar turno: ' + e.message);
+            }
+        }
+
+        function closeTicket() {
+            document.getElementById('ticket-overlay').style.display = 'none';
+        }
+
+        loadQueues();
+    </script>
+</body>
+
+</html>

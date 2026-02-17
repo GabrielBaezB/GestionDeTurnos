@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroQrobo — Operador</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(145deg, #0b0f1a, #1a1040, #0f172a);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .brand-gradient {
+            background: linear-gradient(135deg, #a78bfa, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.5rem;
+            padding: 3rem;
+            max-width: 460px;
+            width: 100%;
+        }
+
+        .dashboard-wrapper {
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .ticket-big {
+            font-size: clamp(5rem, 18vw, 10rem);
+            font-weight: 800;
+            color: #a78bfa;
+            line-height: 1;
+            text-shadow: 0 0 30px rgba(167, 139, 250, 0.4);
+        }
+
+        .status-label {
+            font-size: 1.1rem;
+        }
+
+        .queue-pill {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            padding: 0.3rem 0.8rem;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .action-btn {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 1rem;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 1rem;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 20px 5px rgba(99, 102, 241, 0.15);
+            }
+        }
+
+        .pulse {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- LOGIN -->
+    <div id="login-screen" class="login-wrapper">
+        <div class="login-box">
+            <h2 class="text-center fw-bold mb-1">👨‍💼 Operador</h2>
+            <p class="text-center text-secondary mb-4">Inicie sesión para atender clientes</p>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Usuario</label>
+                <input type="text" id="login-username"
+                    class="form-control form-control-lg bg-dark border-secondary text-light" placeholder="operador">
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Contraseña</label>
+                <input type="password" id="login-password"
+                    class="form-control form-control-lg bg-dark border-secondary text-light" placeholder="••••••••"
+                    onkeydown="if(event.key==='Enter')document.getElementById('login-btn-step1').click()">
+            </div>
+
+            <!-- Step 1: Auth -->
+            <div id="step-auth">
+                <button id="login-btn-step1" class="btn btn-primary btn-lg w-100" onclick="doAuth()">
+                    <i class="bi bi-box-arrow-in-right"></i> Verificar
+                </button>
+            </div>
+
+            <!-- Step 2: Module + Queues -->
+            <div id="step-config" class="d-none">
+                <hr class="border-secondary my-3">
+                <div class="mb-3">
+                    <label class="form-label text-secondary small">Seleccione módulo</label>
+                    <select id="module-select"
+                        class="form-select form-select-lg bg-dark border-secondary text-light"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-secondary small fw-bold">📋 Trámites a atender:</label>
+                    <div id="queue-checks" class="d-flex flex-wrap gap-2 mt-1"></div>
+                </div>
+                <button class="btn btn-success btn-lg w-100" onclick="startSession()">
+                    <i class="bi bi-play-fill"></i> Iniciar Atención
+                </button>
+            </div>
+
+            <p id="login-error" class="text-danger text-center mt-3 mb-0 d-none"></p>
+            <p class="text-center text-secondary small mt-3 mb-0">Default: operador / 1234</p>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard-screen" class="dashboard-wrapper d-none">
+        <!-- Navbar -->
+        <nav class="navbar navbar-dark"
+            style="background: rgba(0,0,0,0.3); border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div class="container-fluid">
+                <span class="navbar-brand fw-bold">⚡ <span class="brand-gradient">ZeroQrobo</span> — Operador</span>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-secondary small" id="nav-operator-name"></span>
+                    <span class="badge bg-primary" id="nav-module-name"></span>
+                    <button class="btn btn-outline-danger btn-sm" onclick="endSession()"><i
+                            class="bi bi-box-arrow-right"></i> Salir</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container py-5" style="max-width: 700px;">
+            <!-- Current Ticket -->
+            <div class="text-center mb-4">
+                <p class="text-secondary mb-1 status-label" id="status-label">Sin ticket actual</p>
+                <div id="current-ticket" class="ticket-big">---</div>
+            </div>
+
+            <!-- Assigned Queues -->
+            <div class="text-center mb-4">
+                <span class="text-secondary small me-2">Atendiendo:</span>
+                <span id="assigned-queues-display"></span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center mb-5">
+                <button id="btn-call" class="btn btn-primary action-btn flex-fill pulse" onclick="callNext()">
+                    <i class="bi bi-megaphone"></i> Llamar Siguiente
+                </button>
+                <button id="btn-recall" class="btn btn-outline-warning action-btn flex-fill d-none"
+                    onclick="recallTicket()">
+                    <i class="bi bi-arrow-repeat"></i> Re-llamar
+                </button>
+                <button id="btn-complete" class="btn btn-success action-btn flex-fill d-none"
+                    onclick="completeTicket()">
+                    <i class="bi bi-check-lg"></i> Completar
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="info-card text-center p-3">
+                        <div class="fs-3 fw-bold text-primary" id="stat-attended">0</div>
+                        <small class="text-secondary">Atendidos</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-card text-center p-3">
+                        <div class="fs-3 fw-bold text-warning" id="stat-waiting">0</div>
+                        <small class="text-secondary">En espera</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-card text-center p-3">
+                        <div class="fs-3 fw-bold text-info" id="stat-time">--:--</div>
+                        <small class="text-secondary">Hora</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-card text-center p-3">
+                        <div class="fs-3 fw-bold text-success" id="stat-module">-</div>
+                        <small class="text-secondary">Módulo</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '/api/v1';
+        let authToken = null;
+        let operatorId = null;
+        let operatorName = '';
+        let moduleId = null;
+        let sessionQueueIds = [];
+        let currentTicketId = null;
+        let currentTicketNumber = null;
+        let attendedCount = 0;
+
+        // Restore session
+        const saved = localStorage.getItem('zq_clerk_session');
+        if (saved) {
+            try {
+                const s = JSON.parse(saved);
+                authToken = s.token;
+                operatorId = s.operatorId;
+                operatorName = s.operatorName;
+                moduleId = s.moduleId;
+                sessionQueueIds = s.queueIds || [];
+                if (authToken && operatorId && moduleId) {
+                    showDashboard();
+                }
+            } catch (e) { localStorage.removeItem('zq_clerk_session'); }
+        }
+
+        // ──────── Auth Flow ────────
+        async function doAuth() {
+            const user = document.getElementById('login-username').value.trim();
+            const pass = document.getElementById('login-password').value;
+            const error = document.getElementById('login-error');
+            error.classList.add('d-none');
+
+            if (!user || !pass) { showLoginError('Ingrese credenciales'); return; }
+
+            const formData = new URLSearchParams();
+            formData.append('username', user);
+            formData.append('password', pass);
+
+            try {
+                const res = await fetch(`${API_URL}/login/access-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData,
+                });
+                if (!res.ok) throw new Error('Credenciales inválidas');
+                const data = await res.json();
+                authToken = data.access_token;
+                operatorId = data.id;
+                operatorName = data.name || user;
+
+                await loadModulesAndQueues();
+
+                document.getElementById('step-auth').classList.add('d-none');
+                document.getElementById('step-config').classList.remove('d-none');
+            } catch (e) {
+                showLoginError(e.message);
+            }
+        }
+
+        async function loadModulesAndQueues() {
+            // Modules
+            const mRes = await authFetch(`${API_URL}/modules/`);
+            const modules = await mRes.json();
+            const sel = document.getElementById('module-select');
+            sel.innerHTML = '';
+            modules.forEach(m => {
+                sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+            });
+
+            // Operator queues
+            const opRes = await authFetch(`${API_URL}/operators/${operatorId}`);
+            const op = await opRes.json();
+            const assignedIds = op.queue_ids || [];
+
+            // All queues
+            const qRes = await authFetch(`${API_URL}/queues/`);
+            const allQueues = await qRes.json();
+
+            const checksDiv = document.getElementById('queue-checks');
+            checksDiv.innerHTML = '';
+            allQueues.filter(q => q.is_active && assignedIds.includes(q.id)).forEach(q => {
+                const label = document.createElement('label');
+                label.className = 'd-flex align-items-center gap-2 px-3 py-2 rounded-3';
+                label.style.cssText = 'background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); cursor: pointer;';
+                label.innerHTML = `<input type="checkbox" class="form-check-input q-check" value="${q.id}" checked> <span class="text-light">${q.name}</span>`;
+                checksDiv.appendChild(label);
+            });
+
+            if (checksDiv.children.length === 0) {
+                checksDiv.innerHTML = '<p class="text-warning small mb-0">No tiene trámites asignados. Contacte al administrador.</p>';
+            }
+        }
+
+        function startSession() {
+            moduleId = parseInt(document.getElementById('module-select').value);
+            sessionQueueIds = Array.from(document.querySelectorAll('.q-check:checked')).map(c => parseInt(c.value));
+
+            if (!moduleId) return showLoginError('Seleccione un módulo');
+            if (sessionQueueIds.length === 0) return showLoginError('Seleccione al menos un trámite');
+
+            localStorage.setItem('zq_clerk_session', JSON.stringify({
+                token: authToken,
+                operatorId,
+                operatorName,
+                moduleId,
+                queueIds: sessionQueueIds,
+            }));
+
+            showDashboard();
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').classList.add('d-none');
+            document.getElementById('dashboard-screen').classList.remove('d-none');
+
+            document.getElementById('nav-operator-name').textContent = operatorName;
+            document.getElementById('nav-module-name').textContent = `Módulo ${moduleId}`;
+            document.getElementById('stat-module').textContent = moduleId;
+
+            updateQueueDisplay();
+            updateClock();
+            setInterval(updateClock, 1000);
+            updateWaitingCount();
+            connectClerkSSE();
+        }
+
+        function updateQueueDisplay() {
+            // Fetch queue names for display
+            authFetch(`${API_URL}/queues/`).then(r => r.json()).then(queues => {
+                const display = document.getElementById('assigned-queues-display');
+                display.innerHTML = sessionQueueIds.map(qid => {
+                    const q = queues.find(qq => qq.id === qid);
+                    return q ? `<span class="queue-pill">${q.name}</span>` : '';
+                }).join(' ');
+            });
+        }
+
+        // ──────── Ticket Operations ────────
+        async function callNext() {
+            try {
+                const res = await authFetch(`${API_URL}/tickets/call-next`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        operator_id: operatorId,
+                        module_id: moduleId,
+                        queue_ids: sessionQueueIds,
+                    }),
+                });
+                if (!res.ok) {
+                    const e = await res.json().catch(() => ({}));
+                    throw new Error(e.detail || 'No hay tickets');
+                }
+                const ticket = await res.json();
+                currentTicketId = ticket.id;
+                currentTicketNumber = ticket.number;
+
+                document.getElementById('current-ticket').textContent = ticket.number;
+                document.getElementById('status-label').textContent = 'Atendiendo ahora:';
+
+                document.getElementById('btn-call').classList.add('d-none');
+                document.getElementById('btn-recall').classList.remove('d-none');
+                document.getElementById('btn-complete').classList.remove('d-none');
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function recallTicket() {
+            if (!currentTicketId) return;
+            try {
+                await authFetch(`${API_URL}/tickets/${currentTicketId}/recall`, { method: 'POST' });
+                alert(`Re-llamando: ${currentTicketNumber}`);
+            } catch (e) { console.error(e); }
+        }
+
+        async function completeTicket() {
+            if (!currentTicketId) return;
+            try {
+                await authFetch(`${API_URL}/tickets/${currentTicketId}/complete`, { method: 'POST' });
+                attendedCount++;
+                document.getElementById('stat-attended').textContent = attendedCount;
+
+                currentTicketId = null;
+                currentTicketNumber = null;
+                document.getElementById('current-ticket').textContent = '---';
+                document.getElementById('status-label').textContent = 'Sin ticket actual';
+
+                document.getElementById('btn-call').classList.remove('d-none');
+                document.getElementById('btn-call').classList.add('pulse');
+                document.getElementById('btn-recall').classList.add('d-none');
+                document.getElementById('btn-complete').classList.add('d-none');
+
+                updateWaitingCount();
+            } catch (e) { alert('Error al completar'); }
+        }
+
+        async function updateWaitingCount() {
+            try {
+                const res = await authFetch(`${API_URL}/tickets/monitor`);
+                const data = await res.json();
+                document.getElementById('stat-waiting').textContent = data.waiting?.length || 0;
+            } catch (e) { }
+        }
+
+        // ─── SSE for real-time waiting count ───
+        function connectClerkSSE() {
+            const es = new EventSource(`${API_URL}/tickets/stream`);
+            es.onmessage = (e) => {
+                try {
+                    const payload = JSON.parse(e.data);
+                    const data = payload.data;
+                    document.getElementById('stat-waiting').textContent = data.waiting?.length || 0;
+                } catch (err) { console.error('SSE parse error', err); }
+            };
+            es.onerror = () => {
+                es.close();
+                setTimeout(connectClerkSSE, 3000);
+            };
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('stat-time').textContent =
+                now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        }
+
+        function endSession() {
+            if (confirm('¿Cerrar sesión de operador?')) {
+                localStorage.removeItem('zq_clerk_session');
+                location.reload();
+            }
+        }
+
+        function showLoginError(msg) {
+            const el = document.getElementById('login-error');
+            el.textContent = msg;
+            el.classList.remove('d-none');
+        }
+
+        async function authFetch(url, options = {}) {
+            if (!options.headers) options.headers = {};
+            options.headers['Authorization'] = `Bearer ${authToken}`;
+            return fetch(url, options);
+        }
+    </script>
+</body>
+
+</html>
