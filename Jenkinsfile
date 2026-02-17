@@ -34,7 +34,8 @@ pipeline {
                 script {
                     echo 'Running Unit Tests with Coverage...'
                     // Run pytest using the venv executable
-                    sh 'venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
+                    // Set PYTHONPATH so it can find 'backend' module
+                    sh 'export PYTHONPATH=$PYTHONPATH:. && venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
                 }
             }
         }
