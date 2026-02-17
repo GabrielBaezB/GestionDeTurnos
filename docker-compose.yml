@@ -68,7 +68,8 @@ services:
       - redis_data:/data
 
   jenkins:
-    image: jenkins/jenkins:lts
+    build:
+      context: ./monitoring/jenkins
     container_name: zeroq_jenkins
     restart: unless-stopped
     privileged: true
