@@ -35,7 +35,8 @@ pipeline {
                     echo 'Running Unit Tests with Coverage...'
                     // Run pytest using the venv executable
                     // Set PYTHONPATH so it can find 'backend' module
-                    sh 'export PYTHONPATH=$PYTHONPATH:. && venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
+                    // Set Dummy Env Vars for Testing (Pydantic Validation)
+                    sh 'export PYTHONPATH=$PYTHONPATH:. && export DATABASE_URL=sqlite:///test.db && export SECRET_KEY=test_secret && venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
                 }
             }
         }
