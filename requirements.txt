@@ -17,3 +17,4 @@ prometheus-fastapi-instrumentator
 pytest-asyncio
 pytest-cov
 redis
+flake8
