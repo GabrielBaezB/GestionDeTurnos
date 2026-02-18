@@ -1,55 +1,65 @@
 pipeline {
     agent any
 
-    environment {
-        // Define any global variables here
-        SCANNER_HOME = tool 'sonar-scanner'
-    }
-
     options {
         ansiColor('xterm')
         timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+        VENV = 'venv'
+        // Dynamic Docker Tag based on Build Number
+        DOCKER_TAG = "v1.0.${env.BUILD_NUMBER}"
     }
     
     stages {
-        stage('Build & Install') {
+        stage('Setup') {
             steps {
                 script {
-                    echo 'Building and Installing Dependencies...'
-                    // Create virtual environment to comply with PEP 668
-                    sh 'python3 -m venv venv'
-                    // Install dependencies into venv
-                    sh 'venv/bin/pip install --no-cache-dir -r requirements.txt'
+                    echo "🚀 Starting Build ${env.BUILD_NUMBER}..."
+                    sh 'python3 -m venv ${VENV}'
+                    sh '${VENV}/bin/pip install --no-cache-dir -r requirements.txt'
                 }
             }
         }
         
-        stage('Linting') {
-            steps {
-                script {
-                    echo 'Running Linting...'
-                    // Example: sh 'venv/bin/ruff check .'
-                    sh 'echo Linting passed'
+        stage('Static Analysis & Testing') {
+            parallel {
+                stage('Linting') {
+                    steps {
+                        script {
+                            echo '🔍 Running Flake8...'
+                            // Stop the build if there are Python syntax errors or undefined names
+                            sh '${VENV}/bin/flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics'
+                            // exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+                            sh '${VENV}/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics'
+                        }
+                    }
                 }
-            }
-        }
-        
-        stage('Unit Tests') {
-            steps {
-                script {
-                    echo 'Running Unit Tests with Coverage...'
-                    // Run pytest using the venv executable
-                    // Set PYTHONPATH so it can find 'backend' module
-                    // Set Dummy Env Vars for Testing (Pydantic Validation)
-                    sh 'export PYTHONPATH=$PYTHONPATH:. && export DATABASE_URL=sqlite:///test.db && export SECRET_KEY=test_secret && venv/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml'
+                
+                stage('Unit Tests') {
+                    steps {
+                        script {
+                            echo '🧪 Running Pytest...'
+                            sh '''
+                                export PYTHONPATH=$PYTHONPATH:.
+                                export DATABASE_URL=sqlite:///test.db
+                                export SECRET_KEY=test_secret
+                                ${VENV}/bin/pytest --cov=backend/app --cov-report=xml:coverage.xml --junitxml=test-results.xml
+                            '''
+                        }
+                    }
                 }
             }
         }
         
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') { // 'SonarQube' must match server name in Jenkins Config
-                    sh "${SCANNER_HOME}/bin/sonar-scanner"
+                withSonarQubeEnv('SonarQube') {
+                    sh "${SCANNER_HOME}/bin/sonar-scanner -Dsonar.projectVersion=${DOCKER_TAG}"
                 }
             }
         }
@@ -62,12 +72,12 @@ pipeline {
             }
         }
         
-        stage('Build Docker') {
+        stage('Build & Package') {
             steps {
                 script {
-                    echo 'Building Docker Image...'
-                    // Assumes Docker is available on the agent
-                    sh 'docker build -t zeroqrobo-backend:latest .'
+                    echo "🐳 Building Docker Image: zeroqrobo-backend:${DOCKER_TAG}"
+                    sh "docker build -t zeroqrobo-backend:${DOCKER_TAG} ."
+                    sh "docker tag zeroqrobo-backend:${DOCKER_TAG} zeroqrobo-backend:latest"
                 }
             }
         }
@@ -75,14 +85,16 @@ pipeline {
     
     post {
         always {
-            // Clean up workspace or send notifications
+            // Archive Test Results and Coverage for Jenkins UI
+            junit 'test-results.xml'
+            archiveArtifacts artifacts: 'coverage.xml', allowEmptyArchive: true
             cleanWs()
         }
-        failure {
-            echo 'Pipeline failed!'
-        }
         success {
-            echo 'Pipeline succeeded!'
+            echo "✅ Build ${env.BUILD_NUMBER} Succeeded!"
+        }
+        failure {
+            echo "❌ Build ${env.BUILD_NUMBER} Failed!"
         }
     }
 }
