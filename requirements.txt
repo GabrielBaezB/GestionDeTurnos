@@ -10,7 +10,7 @@ python-multipart
 passlib[bcrypt]
 python-jose[cryptography]
 pytest
-httpx
+httpx>=0.23.0
 email-validator
 aiofiles
 prometheus-fastapi-instrumentator

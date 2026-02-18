@@ -1,14 +1,15 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select, col
-from pydantic import BaseModel
-from typing import List, Optional
+from sqlmodel import Session, select, col, func
+
 from backend.app.core import database
 from backend.app.core.events import event_manager
 from backend.app.models.ticket import Ticket, TicketCreate, TicketUpdate, TicketStatus
 from backend.app.models.queue import Queue
 from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel
 from prometheus_client import Gauge
 
 router = APIRouter()
@@ -20,7 +21,6 @@ class CallNextRequest(BaseModel):
     module_id: int
     queue_ids: List[int] = []
 
-
 # ─── Helper: build monitor snapshot ───
 def _monitor_snapshot(session: Session) -> dict:
     serving = session.exec(
@@ -28,34 +28,40 @@ def _monitor_snapshot(session: Session) -> dict:
         .where(Ticket.status == TicketStatus.SERVING)
         .order_by(Ticket.updated_at.desc())
     ).all()
+    
+    # Limit waiting tickets for frontend display to avoid massive payload
     waiting = session.exec(
         select(Ticket)
         .where(Ticket.status == TicketStatus.WAITING)
         .order_by(Ticket.created_at)
+        .limit(20)
     ).all()
     
-    # Update Prometheus Metric
-    # Group by queue name for the label
-    counts = {}
-    for t in waiting:
-        q_name = t.queue_type or "unknown"
-        counts[q_name] = counts.get(q_name, 0) + 1
     
-    # Clear previous values (optional, but simple approach is to specific set active ones)
-    # Ideally we'd keep track of all queues, but for now this sets the current state.
-    # Note: Gauges persist. If a queue goes to 0, we must set it to 0.
-    # We iterate all known queues to be safe if possible, but looping 'waiting' only gives us active ones.
-    # A better way is to query all queues.
-    all_queues = session.exec(select(Queue)).all()
-    for q in all_queues:
-        WAITING_TICKETS.labels(queue=q.name).set(counts.get(q.name, 0))
+    # Update Prometheus Metric efficiently using GROUP BY
+    try:
+        stats = session.exec(
+            select(Ticket.queue_type, func.count(Ticket.id))
+            .where(Ticket.status == TicketStatus.WAITING)
+            .group_by(Ticket.queue_type)
+        ).all()
+        
+        counts = {name: count for name, count in stats}
+        
+        # Ensure all queues are updated (set to 0 if no tickets)
+        # Wrap in try/except to prevent Prometheus from crashing the app
+        all_queues = session.exec(select(Queue)).all()
+        for q in all_queues:
+            if q.name:
+                WAITING_TICKETS.labels(queue=q.name).set(counts.get(q.name, 0))
+    except Exception as e:
+        print(f"Error updating metrics: {e}")
 
-    # Return limited list for frontend to avoid huge payload
     return {
         "serving": [{"id": t.id, "number": t.number, "queue_type": t.queue_type,
                       "served_by_module_id": t.served_by_module_id,
                       "served_by_operator_id": t.served_by_operator_id} for t in serving],
-        "waiting": [{"id": t.id, "number": t.number, "queue_type": t.queue_type} for t in waiting[:20]], # Limit only for JSON response
+        "waiting": [{"id": t.id, "number": t.number, "queue_type": t.queue_type} for t in waiting],
     }
 
 
@@ -80,8 +86,8 @@ async def ticket_stream():
                 payload = await asyncio.wait_for(queue.get(), timeout=30)
                 yield f"data: {payload}\n\n"
         except asyncio.TimeoutError:
-            # Send keepalive comment to prevent connection drop
-            yield ": keepalive\n\n"
+            # Send structured heartbeat to keep connection alive and let client detect stale connection
+            yield 'data: {"type": "heartbeat"}\n\n'
         except asyncio.CancelledError:
             pass
         finally:
@@ -114,6 +120,8 @@ def create_ticket(
     queue = session.get(Queue, ticket_in.queue_id)
     if not queue:
         raise HTTPException(status_code=404, detail="Queue not found")
+    if not queue.is_active:
+        raise HTTPException(status_code=400, detail="Queue is inactive")
 
     prefix = queue.prefix
 
@@ -127,11 +135,9 @@ def create_ticket(
         # Fallback to SQL if Redis fails (optional, or just fail)
         print(f"Redis error: {e}, falling back to SQL count")
         today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_count = len(session.exec(
-            select(Ticket)
-            .where(Ticket.queue_id == queue.id)
-            .where(Ticket.created_at >= today_start)
-        ).all())
+        # Optimized count
+        count_query = select(func.count()).where(Ticket.queue_id == queue.id).where(Ticket.created_at >= today_start)
+        today_count = session.exec(count_query).one()
         number_seq = today_count + 1
         ticket_number = f"{prefix}-{number_seq:03d}"
 

@@ -36,3 +36,41 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
         yield client
     
     app.dependency_overrides.clear()
+
+@pytest.fixture(name="superuser_token_headers")
+def superuser_token_headers_fixture(client: TestClient, session: Session) -> dict:
+    from backend.app.core.security import create_access_token, get_password_hash
+    from backend.app.models.operator import Operator
+
+    # Create superuser
+    user = Operator(
+        name="Super Admin",
+        username="admin_test",
+        hashed_password=get_password_hash("password"),
+        is_active=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    access_token = create_access_token(subject=user.id)
+    return {"Authorization": f"Bearer {access_token}"}
+
+@pytest.fixture(name="normal_user_token_headers")
+def normal_user_token_headers_fixture(client: TestClient, session: Session) -> dict:
+    from backend.app.core.security import create_access_token, get_password_hash
+    from backend.app.models.operator import Operator
+
+    # Create normal user
+    user = Operator(
+        name="Normal User",
+        username="user_test",
+        hashed_password=get_password_hash("password"),
+        is_active=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    access_token = create_access_token(subject=user.id)
+    return {"Authorization": f"Bearer {access_token}"}

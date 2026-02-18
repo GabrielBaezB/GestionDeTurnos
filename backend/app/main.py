@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI # Trigger reload
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
@@ -66,6 +66,10 @@ if os.path.exists(frontend_path):
     async def read_admin():
         return FileResponse(os.path.join(frontend_path, "admin.html"))
 
+    @app.get("/reports")
+    async def read_reports():
+        return FileResponse(os.path.join(frontend_path, "reports.html"))
+
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "system": "ZeroQrobo Notaría Online (Frontend Ready)"}
+    return {"status": "ok", "system": "ZeroQrobo Notaría Online (Reports Enabled)"}

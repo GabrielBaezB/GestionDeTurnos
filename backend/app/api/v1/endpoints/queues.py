@@ -57,6 +57,10 @@ def delete_queue(
     if not queue:
         raise HTTPException(status_code=404, detail="Queue not found")
         
-    session.delete(queue)
+    # Soft Delete: just mark as inactive
+    # This preserves analytics and Ticket history
+    queue.is_active = False
+    session.add(queue)
     session.commit()
+    session.refresh(queue)
     return queue

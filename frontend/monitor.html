@@ -331,22 +331,51 @@
         }
 
         // ─── SSE Connection ───
+        let es = null;
+        let lastHeartbeat = Date.now();
+        // Visual indicator (optional, small dot in corner)
+        const statusDot = document.createElement('div');
+        statusDot.style.cssText = "position:fixed;bottom:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#ef4444;transition:background 0.3s;z-index:9999;";
+        document.body.appendChild(statusDot);
+
         function connectSSE() {
-            const es = new EventSource(`${API_URL}/tickets/stream`);
+            if (es) es.close();
+            es = new EventSource(`${API_URL}/tickets/stream`);
+            statusDot.style.background = "#eab308"; // connecting (yellow)
+
+            es.onopen = () => {
+                console.log('SSE Connected');
+                statusDot.style.background = "#22c55e"; // connected (green)
+                lastHeartbeat = Date.now();
+            };
 
             es.onmessage = (e) => {
+                lastHeartbeat = Date.now();
                 try {
                     const payload = JSON.parse(e.data);
+                    if (payload.type === 'heartbeat') return;
                     renderMonitor(payload.data);
                 } catch (err) { console.error('SSE parse error', err); }
             };
 
             es.onerror = () => {
                 console.warn('SSE disconnected, reconnecting in 3s…');
+                statusDot.style.background = "#ef4444"; // error (red)
                 es.close();
-                setTimeout(connectSSE, 3000);
+                // setTimeout(connectSSE, 3000); // Watchdog handles reconnection now
             };
         }
+
+        // Watchdog: Check connection health every 5s
+        setInterval(() => {
+            const now = Date.now();
+            // 45s timeout (backend sends heartbeat every 30s)
+            if (now - lastHeartbeat > 45000) {
+                console.warn('Watchdog: No heartbeat, forcing reconnect...');
+                connectSSE();
+                lastHeartbeat = now; // Reset to avoid loop
+            }
+        }, 5000);
 
         // Initial load via REST, then switch to SSE
         async function initialLoad() {

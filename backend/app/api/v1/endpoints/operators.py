@@ -98,8 +98,9 @@ def update_operator(
     # Handle queue_ids
     queue_ids = update_data.pop("queue_ids", None)
 
-    for key, value in update_data.items():
-        setattr(operator, key, value)
+    existing = session.exec(select(Operator).where(Operator.username == operator_in.username)).first()
+    if existing and existing.id != operator_id:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
     session.add(operator)
     session.commit()
