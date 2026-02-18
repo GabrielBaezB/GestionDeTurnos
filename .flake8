@@ -1,0 +1,8 @@
+[flake8]
+max-line-length = 127
+max-complexity = 10
+exclude = venv,.git,__pycache__,docker
+count = True
+statistics = True
+show-source = True
+select = E9,F63,F7,F82

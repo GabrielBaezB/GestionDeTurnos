@@ -32,10 +32,8 @@ pipeline {
                     steps {
                         script {
                             echo '🔍 Running Flake8...'
-                            // Stop the build if there are Python syntax errors or undefined names
-                            sh '${VENV}/bin/flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv,.git,__pycache__'
-                            // exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-                            sh '${VENV}/bin/flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=venv,.git,__pycache__'
+                            // Flake8 will read .flake8 config file for excludes and settings
+                            sh '${VENV}/bin/flake8 .'
                         }
                     }
                 }
