@@ -49,7 +49,7 @@ def test_dashboard_stats(client, superuser_token_headers, session):
     assert daily_stats["waiting_tickets"] == 1
 
     op_stats = data["operator_stats"]
-    assert len(op_stats) == 1
-    stats_op = op_stats[0]
-    assert stats_op["operator_name"] == "Stats Op"
+    # We might have Super Admin from fixture, so find our specific op
+    stats_op = next((item for item in op_stats if item["operator_name"] == "Stats Op"), None)
+    assert stats_op is not None
     assert stats_op["tickets_served"] == 1
