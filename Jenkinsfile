@@ -3,7 +3,12 @@ pipeline {
 
     environment {
         // Define any global variables here
-        SCANNER_HOME = tool 'sonar-scanner' // Make sure 'sonar-scanner' tool is configured in Jenkins
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    options {
+        ansiColor('xterm')
+        timestamps()
     }
     
     stages {
