@@ -23,9 +23,11 @@ class CallNextRequest(BaseModel):
 
 # ─── Helper: build monitor snapshot ───
 def _monitor_snapshot(session: Session) -> dict:
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     serving = session.exec(
         select(Ticket)
         .where(Ticket.status == TicketStatus.SERVING)
+        .where(Ticket.updated_at >= today)
         .order_by(Ticket.updated_at.desc())
     ).all()
     
@@ -80,23 +82,19 @@ async def ticket_stream():
     """Server-Sent Events stream for real-time ticket updates."""
     queue = await event_manager.subscribe()
 
-    async def generate():
+    async def event_generator():
         try:
             while True:
-                payload = await asyncio.wait_for(queue.get(), timeout=30)
-                yield f"data: {payload}\n\n"
-        except asyncio.TimeoutError:
-            # Send structured heartbeat to keep connection alive and let client detect stale connection
-            yield 'data: {"type": "heartbeat"}\n\n'
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=15)
+                    yield f"data: {payload}\n\n"
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive (every 15s)
+                    yield 'data: {"type": "heartbeat"}\n\n'
         except asyncio.CancelledError:
             pass
         finally:
             event_manager.unsubscribe(queue)
-
-    async def event_generator():
-        while True:
-            async for chunk in generate():
-                yield chunk
 
     return StreamingResponse(
         event_generator(),
@@ -107,6 +105,50 @@ async def ticket_stream():
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# ─── Wait Time Estimate ───
+@router.get("/wait-estimate")
+def get_wait_estimate(
+    *,
+    session: Session = Depends(database.get_session),
+    queue_id: Optional[int] = Query(None),
+) -> dict:
+    """Estimate wait time based on avg service duration of completed tickets today."""
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Count waiting tickets (optionally filtered by queue)
+    wait_query = select(func.count()).where(
+        Ticket.status == TicketStatus.WAITING,
+        Ticket.created_at >= today,
+    )
+    if queue_id:
+        wait_query = wait_query.where(Ticket.queue_id == queue_id)
+    waiting_count = session.exec(wait_query).one()
+    
+    # Calculate average service duration from completed tickets today
+    completed = session.exec(
+        select(Ticket)
+        .where(Ticket.status == TicketStatus.COMPLETED)
+        .where(Ticket.created_at >= today)
+    ).all()
+    
+    if len(completed) >= 3:
+        # Need at least 3 data points for a reasonable average
+        durations = [(t.updated_at - t.created_at).total_seconds() / 60 for t in completed]
+        avg_minutes = sum(durations) / len(durations)
+    else:
+        # Default: 5 minutes per ticket if not enough data
+        avg_minutes = 5.0
+    
+    estimated_wait = round(avg_minutes * waiting_count)
+    
+    return {
+        "waiting_count": waiting_count,
+        "avg_service_minutes": round(avg_minutes, 1),
+        "estimated_wait_minutes": estimated_wait,
+        "data_points": len(completed),
+    }
 
 
 # ─── Create Ticket ───
@@ -237,24 +279,18 @@ def get_monitor_data(
     *,
     session: Session = Depends(database.get_session),
 ) -> dict:
-    serving = session.exec(
-        select(Ticket)
-        .where(Ticket.status == TicketStatus.SERVING)
-        .order_by(Ticket.updated_at.desc())
-    ).all()
+    snapshot = _monitor_snapshot(session)
+    # Add history (last 5 completed) for REST clients
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     history = session.exec(
         select(Ticket)
         .where(Ticket.status == TicketStatus.COMPLETED)
+        .where(Ticket.updated_at >= today)
         .order_by(Ticket.updated_at.desc())
         .limit(5)
     ).all()
-    waiting = session.exec(
-        select(Ticket)
-        .where(Ticket.status == TicketStatus.WAITING)
-        .order_by(Ticket.created_at)
-        .limit(10)
-    ).all()
-    return {"serving": serving, "history": history, "waiting": waiting}
+    snapshot["history"] = [{"id": t.id, "number": t.number, "queue_type": t.queue_type} for t in history]
+    return snapshot
 
 
 # ─── Complete ───
@@ -284,9 +320,11 @@ def get_active_sessions(
     *,
     session: Session = Depends(database.get_session),
 ) -> List[dict]:
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     serving_tickets = session.exec(
         select(Ticket)
         .where(Ticket.status == TicketStatus.SERVING)
+        .where(Ticket.updated_at >= today)
         .order_by(Ticket.updated_at.desc())
     ).all()
     return [

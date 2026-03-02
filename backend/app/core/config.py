@@ -2,7 +2,11 @@ from pydantic_settings import BaseSettings
 from typing import List
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "ZeroQrobo Notaría"
+    PROJECT_NAME: str = "textConfig"
+    COMPANY_NAME: str = "Empresa Genérica"
+    LOGO_URL: str = "/static/logo.png"
+    THEME_COLOR: str = "#3b82f6" # Default Blue
+    
     API_V1_STR: str = "/api/v1"
 
     DATABASE_URL: str
@@ -20,5 +24,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 settings = Settings()

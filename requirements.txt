@@ -18,3 +18,4 @@ pytest-asyncio
 pytest-cov
 redis
 flake8
+jinja2

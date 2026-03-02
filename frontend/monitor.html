@@ -4,10 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeroQrobo — Monitor de Turnos</title>
+    <title>{{ project_name }} — Monitor de Turnos</title>
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -244,6 +249,18 @@
 </head>
 
 <body>
+    <!-- ─── Fullscreen Audio Unlock Overlay ─── -->
+    <div id="audio-overlay"
+        style="position:fixed;inset:0;background:rgba(11, 15, 26, 0.95);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(10px);">
+        <h2 class="text-light mb-4 text-center">Bienvenido al Monitor de Filas</h2>
+        <p class="text-secondary mb-5 text-center px-4">Para poder anunciar los turnos con voz y sonido, el navegador
+            requiere su autorización.</p>
+        <button class="btn btn-primary btn-lg px-5 py-3 fs-4" onclick="initAudioUserAction()"
+            style="border-radius: 50px; background: #6366f1; border:none; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);">
+            <i class="bi bi-play-circle-fill me-2"></i> Iniciar Monitor
+        </button>
+    </div>
+
     <div class="monitor-layout">
         <!-- Left: Now Serving -->
         <div class="now-serving">
@@ -253,7 +270,7 @@
 
             <div class="footer-info text-center">
                 <p class="mb-1">Por favor acérquese al módulo indicado</p>
-                <p class="fw-bold fs-5" style="color: #64748b;">⚡ ZeroQrobo</p>
+                <p class="fw-bold fs-5" style="color: #64748b;">⚡ {{ project_name }}</p>
             </div>
         </div>
 
@@ -275,12 +292,15 @@
         </div>
     </div>
 
+    <!-- ─── TTS Library (ResponsiveVoice JS) ─── -->
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=YOUR_API_KEY_HERE"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/config.js?v=2"></script>
     <script>
         const API_URL = '/api/v1';
         let lastCalledTicket = null;
 
-        function renderMonitor(data) {
+        function renderMonitor(data, isInitialLoad = false) {
             // Main Display
             if (data.serving && data.serving.length > 0) {
                 const current = data.serving[0];
@@ -291,6 +311,17 @@
                     display.classList.remove('flash');
                     void display.offsetWidth;
                     display.classList.add('flash');
+
+                    // Only play sound and voice if this is a NEW ticket during SSE stream, 
+                    // NOT when we first load the page (preventing Autoplay policy violations)
+                    if (!isInitialLoad) {
+                        playNotificationSound();
+
+                        // Delay voice slightly so it plays *after* the bell sound
+                        setTimeout(() => {
+                            speakTicket(current.number, current.served_by_module_id);
+                        }, 800);
+                    }
                 }
 
                 display.textContent = current.number;
@@ -330,16 +361,124 @@
             }
         }
 
+        // ─── Notification Sound (Web Audio API) ───
+        let audioCtx = null;
+        let audioEnabled = false;
+
+        function initAudioUserAction() {
+            try {
+                // Must be created DIRECTLY inside this user-event handler
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                // Silent speech to unlock SpeechSynthesis engine on iOS/Android/Chrome
+                if ('speechSynthesis' in window) {
+                    let unlockMsg = new SpeechSynthesisUtterance('');
+                    unlockMsg.volume = 0;
+                    window.speechSynthesis.speak(unlockMsg);
+                }
+
+                audioEnabled = true;
+
+                // Hide the giant overlay
+                const overlay = document.getElementById('audio-overlay');
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                }
+                console.log("Audio permissions unlocked by user.");
+            } catch (e) {
+                console.error("Failed to unlock audio:", e);
+            }
+        }
+
+        function playNotificationSound() {
+            if (!audioEnabled || !audioCtx) {
+                console.warn("Audio not enabled yet. User must click 'Activar Sonido'.");
+                return;
+            }
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);       // A5
+                osc.frequency.setValueAtTime(660, audioCtx.currentTime + 0.15); // E5
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start(audioCtx.currentTime);
+                osc.stop(audioCtx.currentTime + 0.5);
+            } catch (e) { console.warn('Audio play failed', e); }
+        }
+
+        // ─── Speech Synthesis (Voice Announcement) ───
+        function speakTicket(ticketNumber, moduleId) {
+            if (!audioEnabled) {
+                console.warn("Voice blocked: User hasn't interacted with page yet.");
+                return;
+            }
+
+            console.log(`Speaking: Turno ${ticketNumber}, Módulo ${moduleId}`);
+
+            // Pre-process the ticket number so the TTS engine reads it naturally:
+            // "A-012" -> "A, 0 1 2"
+            let ticketStr = String(ticketNumber).trim();
+            // Replace dash with comma for a slight pause
+            ticketStr = ticketStr.replace(/-/g, ', ');
+            // If there's a letter next to a number (A012), split with comma
+            ticketStr = ticketStr.replace(/([a-zA-Z])(\d)/g, '$1, $2');
+            // Force numbers to be read digit by digit
+            let spokenTicket = ticketStr.replace(/\d+/g, function (match) {
+                return match.split('').join(' ');
+            });
+
+            let spokenModule = moduleId || 'asignado';
+            // If the moduleId doesn't contain text like "Caja" or "Módulo", prepend it naturally
+            if (typeof spokenModule === 'string' && !spokenModule.toLowerCase().includes('caja') && !spokenModule.toLowerCase().includes('módulo')) {
+                spokenModule = `Módulo ${spokenModule}`;
+            } else if (typeof spokenModule === 'number') {
+                spokenModule = `Módulo ${spokenModule}`;
+            }
+
+            // Usar ResponsiveVoice si está disponible como alternativa más confiable
+            let textToSpeak = `Turno ${spokenTicket}, ${spokenModule}`;
+
+            try {
+                if (typeof responsiveVoice !== 'undefined') {
+                    // Force Spanish female voice, slightly slower
+                    responsiveVoice.speak(textToSpeak, "Spanish Female", { rate: 0.9, pitch: 1 });
+                } else {
+                    console.error("ResponsiveVoice library failed to load.");
+                    // Fallback to native just in case
+                    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                    utterance.lang = 'es-ES';
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                console.error("Failed to execute speech:", e);
+            }
+        }
+
         // ─── SSE Connection ───
         let es = null;
         let lastHeartbeat = Date.now();
-        // Visual indicator (optional, small dot in corner)
+        // Visual indicator (small dot in corner)
         const statusDot = document.createElement('div');
         statusDot.style.cssText = "position:fixed;bottom:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#ef4444;transition:background 0.3s;z-index:9999;";
         document.body.appendChild(statusDot);
 
         function connectSSE() {
-            if (es) es.close();
+            if (es) { es.close(); es = null; }
             es = new EventSource(`${API_URL}/tickets/stream`);
             statusDot.style.background = "#eab308"; // connecting (yellow)
 
@@ -351,6 +490,7 @@
 
             es.onmessage = (e) => {
                 lastHeartbeat = Date.now();
+                statusDot.style.background = "#22c55e";
                 try {
                     const payload = JSON.parse(e.data);
                     if (payload.type === 'heartbeat') return;
@@ -362,26 +502,37 @@
                 console.warn('SSE disconnected, reconnecting in 3s…');
                 statusDot.style.background = "#ef4444"; // error (red)
                 es.close();
-                // setTimeout(connectSSE, 3000); // Watchdog handles reconnection now
+                es = null;
+                setTimeout(connectSSE, 3000);
             };
         }
 
-        // Watchdog: Check connection health every 5s
+        // Watchdog: Force reconnect if no heartbeat in 25s (backend sends every 15s)
         setInterval(() => {
             const now = Date.now();
-            // 45s timeout (backend sends heartbeat every 30s)
-            if (now - lastHeartbeat > 45000) {
+            if (now - lastHeartbeat > 25000) {
                 console.warn('Watchdog: No heartbeat, forcing reconnect...');
                 connectSSE();
-                lastHeartbeat = now; // Reset to avoid loop
+                lastHeartbeat = now;
             }
         }, 5000);
+
+        // REST Fallback Poll: Safety net every 15s in case SSE silently dies
+        setInterval(async () => {
+            try {
+                const res = await fetch(`${API_URL}/tickets/monitor`);
+                if (res.ok) renderMonitor(await res.json());
+            } catch (e) { /* silent */ }
+        }, 15000);
 
         // Initial load via REST, then switch to SSE
         async function initialLoad() {
             try {
                 const res = await fetch(`${API_URL}/tickets/monitor`);
-                if (res.ok) renderMonitor(await res.json());
+                if (res.ok) {
+                    const data = await res.json();
+                    renderMonitor(data, true); // true = mute audio on initial load
+                }
             } catch (e) { console.error(e); }
             connectSSE();
         }
