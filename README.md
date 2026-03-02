@@ -39,26 +39,26 @@ Sistema completo de turnos y colas para atención al público, inspirado en Zero
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                    Frontend                      │
-│                                                  │
-│  ┌──────┐ ┌──────┐ ┌───────┐ ┌─────┐ ┌───────┐ │
+│                    Frontend                     │
+│                                                 │
+│  ┌──────┐ ┌──────┐ ┌───────┐ ┌─────┐ ┌───────┐  │
 │  │Portal│ │Kiosco│ │Monitor│ │Clerk│ │ Admin │  │
 │  └──┬───┘ └──┬───┘ └───┬───┘ └──┬──┘ └───┬───┘  │
-│     │        │     SSE ↑│       │SSE     │       │
+│     │        │     SSE ↑│       │SSE     │      │
 ├─────┼────────┼─────────┼───────┼────────┼───────┤
 │     └────────┴─────────┼───────┴────────┘       │
-│                   FastAPI Backend                 │
-│                                                   │
-│  ┌────────┐ ┌────────┐ ┌──────┐ ┌─────────────┐  │
-│  │Tickets │ │Queues  │ │Login │ │  SSE Stream  │  │
-│  │  API   │ │  API   │ │ API  │ │  /stream     │  │
-│  └────┬───┘ └────┬───┘ └──┬───┘ └──────┬──────┘  │
-│       └──────────┴────────┴────────────┘          │
-│                      SQLModel ORM                  │
-├────────────────────────────────────────────────────┤
-│              PostgreSQL 16 (Docker)                 │
-│           ó SQLite (desarrollo local)               │
-└────────────────────────────────────────────────────┘
+│                   FastAPI Backend               │
+│                                                 │
+│  ┌────────┐ ┌────────┐ ┌──────┐ ┌─────────────┐ │
+│  │Tickets │ │Queues  │ │Login │ │  SSE Stream │ │
+│  │  API   │ │  API   │ │ API  │ │  /stream    │ │
+│  └────┬───┘ └────┬───┘ └──┬───┘ └──────┬──────┘ │
+│       └──────────┴────────┴────────────┘        │
+│                      SQLModel ORM               │
+├─────────────────────────────────────────────────┤
+│              PostgreSQL 16 (Docker)             │
+│           ó SQLite (desarrollo local)           │
+└─────────────────────────────────────────────────┘
 ```
 
 ---
@@ -432,4 +432,5 @@ docker-compose down -v
 ## 📄 Licencia
 
 Proyecto desarrollado para gestión de filas y turnos. Uso interno.
+
 
