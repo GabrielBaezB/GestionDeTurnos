@@ -18,6 +18,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: '768M'
+        reservations:
+          cpus: '0.2'
+          memory: '256M'
 
   backend:
     build: .
@@ -33,31 +41,14 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-
-  prometheus:
-    image: prom/prometheus
-    container_name: gestiondeturnos_prometheus
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-
-  grafana:
-    image: grafana/grafana
-    container_name: gestiondeturnos_grafana
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - grafana_data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: '512M'
+        reservations:
+          cpus: '0.1'
+          memory: '128M'
 
   redis:
     image: redis:alpine
@@ -67,38 +58,15 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-
-  jenkins:
-    build:
-      context: ./monitoring/jenkins
-    container_name: gestiondeturnos_jenkins
-    restart: unless-stopped
-    privileged: true
-    user: root
-    ports:
-      - "8080:8080"
-      - "50000:50000"
-    volumes:
-      - jenkins_data:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  sonarqube:
-    image: sonarqube:community
-    container_name: gestiondeturnos_sonarqube
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-      - sonarqube_logs:/opt/sonarqube/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: '256M'
+        reservations:
+          cpus: '0.05'
+          memory: '64M'
 
 volumes:
   postgres_data:
-  prometheus_data:
-  grafana_data:
   redis_data:
-  jenkins_data:
-  sonarqube_data:
-  sonarqube_extensions:
-  sonarqube_logs:
