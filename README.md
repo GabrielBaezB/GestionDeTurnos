@@ -1,4 +1,4 @@
-# ⚡ ZeroQrobo — Sistema Inteligente de Gestión de Filas
+# ⚡ GestionDeTurnos — Sistema Inteligente de Gestión de Filas
 
 Sistema completo de turnos y colas para atención al público, inspirado en ZeroQ. Construido con **FastAPI**, **PostgreSQL**, **Bootstrap 5** y **Server-Sent Events (SSE)** para actualizaciones en tiempo real.
 
@@ -432,3 +432,4 @@ docker-compose down -v
 ## 📄 Licencia
 
 Proyecto desarrollado para gestión de filas y turnos. Uso interno.
+
