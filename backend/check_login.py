@@ -1,12 +1,13 @@
 from sqlmodel import Session, select
 from backend.app.core.database import engine
+from backend.app.core.config import settings
 from backend.app.models.user import User
 from backend.app.core.security import verify_password, get_password_hash
 
 def check_login():
     with Session(engine) as session:
         # Check Admin
-        user = session.exec(select(User).where(User.email == "admin@zeroq.cl")).first()
+        user = session.exec(select(User).where(User.email == settings.DEFAULT_ADMIN_EMAIL)).first()
         if not user:
             print("ERROR: Admin user not found in DB!")
             return

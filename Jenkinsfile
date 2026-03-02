@@ -73,9 +73,9 @@ pipeline {
         stage('Build & Package') {
             steps {
                 script {
-                    echo "🐳 Building Docker Image: zeroqrobo-backend:${DOCKER_TAG}"
-                    sh "docker build -t zeroqrobo-backend:${DOCKER_TAG} ."
-                    sh "docker tag zeroqrobo-backend:${DOCKER_TAG} zeroqrobo-backend:latest"
+                    echo "🐳 Building Docker Image: gestiondeturnos-backend:${DOCKER_TAG}"
+                    sh "docker build -t gestiondeturnos-backend:${DOCKER_TAG} ."
+                    sh "docker tag gestiondeturnos-backend:${DOCKER_TAG} gestiondeturnos-backend:latest"
                 }
             }
         }

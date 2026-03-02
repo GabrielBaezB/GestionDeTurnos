@@ -2,7 +2,7 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
-  - job_name: 'zeroqrobo_backend'
+  - job_name: 'gestiondeturnos_backend'
     scrape_interval: 5s
     static_configs:
       - targets: ['backend:8000']

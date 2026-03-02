@@ -1,5 +1,6 @@
 from sqlmodel import Session, select
 from backend.app.core.database import engine, init_db
+from backend.app.core.config import settings
 from backend.app.models.user import User
 from backend.app.models.operator import Operator
 from backend.app.models.queue import Queue
@@ -14,12 +15,12 @@ def init_db_data():
 
     with Session(engine) as session:
         # --- Admin user ---
-        admin = session.exec(select(User).where(User.email == "admin@zeroq.cl")).first()
+        admin = session.exec(select(User).where(User.email == settings.DEFAULT_ADMIN_EMAIL)).first()
         if not admin:
             print("Creating default admin user...")
             admin = User(
-                email="admin@zeroq.cl",
-                hashed_password=get_password_hash("admin"),
+                email=settings.DEFAULT_ADMIN_EMAIL,
+                hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                 is_superuser=True,
                 full_name="Admin",
             )
@@ -32,7 +33,7 @@ def init_db_data():
         for op in operators:
             if not op.hashed_password:
                 print(f"Setting default password for operator {op.username}...")
-                op.hashed_password = get_password_hash("1234")
+                op.hashed_password = get_password_hash(settings.DEFAULT_OPERATOR_PASSWORD)
                 session.add(op)
 
         session.commit()
@@ -63,7 +64,7 @@ def init_db_data():
             op = Operator(
                 name="Operador 1",
                 username="operador",
-                hashed_password=get_password_hash("1234"),
+                hashed_password=get_password_hash(settings.DEFAULT_OPERATOR_PASSWORD),
                 is_active=True,
                 current_module_id=module.id if module else None,
             )

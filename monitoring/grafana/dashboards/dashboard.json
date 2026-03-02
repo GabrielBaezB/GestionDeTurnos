@@ -266,7 +266,7 @@
             "uid": "P1809F7CD0C75ACF3"
           },
           "editorMode": "code",
-          "expr": "sum(zeroq_waiting_tickets) or vector(0)",
+          "expr": "sum(gestiondeturnos_waiting_tickets) or vector(0)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -288,7 +288,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ZeroQrobo Dashboard",
+  "title": "gestiondeturnos Dashboard",
   "uid": "cdqi5m8eim60wa",
   "version": 1,
   "weekStart": ""

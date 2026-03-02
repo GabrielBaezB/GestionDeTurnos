@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    
+    DEFAULT_ADMIN_EMAIL: str = "admin@gestiondeturnos.cl"
+    DEFAULT_ADMIN_PASSWORD: str = "admin"
+    DEFAULT_OPERATOR_PASSWORD: str = "1234"
 
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost",

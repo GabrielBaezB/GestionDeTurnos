@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zeroq-v11';
+const CACHE_NAME = 'gestiondeturnos-v11';
 const PRECACHE_URLS = [
     '/',
     '/kiosk',

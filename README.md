@@ -1,6 +1,6 @@
 # ⚡ GestionDeTurnos — Sistema Inteligente de Gestión de Filas
 
-Sistema completo de turnos y colas para atención al público, inspirado en ZeroQ. Construido con **FastAPI**, **PostgreSQL**, **Bootstrap 5** y **Server-Sent Events (SSE)** para actualizaciones en tiempo real.
+Sistema completo de turnos y colas para atención al público, inspirado en GestionDeTurnos. Construido con **FastAPI**, **PostgreSQL**, **Bootstrap 5** y **Server-Sent Events (SSE)** para actualizaciones en tiempo real.
 
 ---
 
@@ -239,7 +239,7 @@ Base URL: `/api/v1`
 
 **Body** (form-urlencoded):
 ```
-username=admin@zeroq.cl&password=admin
+username=admin@gestiondeturnos.cl&password=admin
 ```
 
 **Response:**
@@ -248,7 +248,7 @@ username=admin@zeroq.cl&password=admin
   "access_token": "eyJhbG...",
   "token_type": "bearer",
   "role": "admin",
-  "name": "admin@zeroq.cl",
+  "name": "admin@gestiondeturnos.cl",
   "id": 1
 }
 ```
@@ -392,8 +392,8 @@ postgresql://postgres:password@postgres:5432/GestionDeTurnos
 
 | Rol | Usuario | Contraseña | Interfaz |
 |-----|---------|------------|----------|
-| **Admin** | `admin@zeroq.cl` | `admin` | `/admin` |
-| **Operador** | `operador` | `1234` | `/clerk` |
+| **Admin** | `[EMAIL_ADDRESS]` | `admin` | `/admin` |
+| **Operador** | `[EMAIL_ADDRESS]` | `1234` | `/clerk` |
 
 > Estos usuarios se crean automáticamente al iniciar la aplicación por primera vez (`init_auth.py`).
 

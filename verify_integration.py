@@ -1,3 +1,4 @@
+import os
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -77,14 +78,14 @@ def test_manual_clerk_flow(ticket_id, queue_id):
     
     # 1. Login
     username = "operador"
-    password = "1234"
+    password = os.getenv("DEFAULT_OPERATOR_PASSWORD", "1234")
     print(f"Logging in as {username}...")
     
     auth_data, status = make_form_request(f"{API_URL}/login/access-token", {"username": username, "password": password})
     if status != 200:
         print("Operator login failed. Trying admin...")
-        username = "admin@zeroq.cl"
-        password = "admin"
+        username = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gestiondeturnos.cl")
+        password = os.getenv("DEFAULT_ADMIN_PASSWORD", "admin")
         auth_data, status = make_form_request(f"{API_URL}/login/access-token", {"username": username, "password": password})
         if status != 200:
             print(f"Login failed: {auth_data}")

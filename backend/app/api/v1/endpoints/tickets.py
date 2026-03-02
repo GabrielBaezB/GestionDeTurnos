@@ -14,7 +14,7 @@ from prometheus_client import Gauge
 
 router = APIRouter()
 
-WAITING_TICKETS = Gauge('zeroq_waiting_tickets', 'Number of tickets currently waiting', ['queue'])
+WAITING_TICKETS = Gauge('gestiondeturnos_waiting_tickets', 'Number of tickets currently waiting', ['queue'])
 
 class CallNextRequest(BaseModel):
     operator_id: int

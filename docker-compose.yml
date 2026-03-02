@@ -3,12 +3,12 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16
-    container_name: zeroq_postgres
+    container_name: gestiondeturnos_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: zeroqrobo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: gestiondeturnos
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -21,12 +21,12 @@ services:
 
   backend:
     build: .
-    container_name: zeroqrobo_backend
+    container_name: gestiondeturnos_backend
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/zeroqrobo
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:password@postgres:5432/gestiondeturnos}
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -36,7 +36,7 @@ services:
 
   prometheus:
     image: prom/prometheus
-    container_name: zeroq_prometheus
+    container_name: gestiondeturnos_prometheus
     restart: unless-stopped
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -46,14 +46,14 @@ services:
 
   grafana:
     image: grafana/grafana
-    container_name: zeroq_grafana
+    container_name: gestiondeturnos_grafana
     restart: unless-stopped
     volumes:
       - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     ports:
       - "3000:3000"
     depends_on:
@@ -61,7 +61,7 @@ services:
 
   redis:
     image: redis:alpine
-    container_name: zeroq_redis
+    container_name: gestiondeturnos_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -71,7 +71,7 @@ services:
   jenkins:
     build:
       context: ./monitoring/jenkins
-    container_name: zeroq_jenkins
+    container_name: gestiondeturnos_jenkins
     restart: unless-stopped
     privileged: true
     user: root
@@ -84,7 +84,7 @@ services:
 
   sonarqube:
     image: sonarqube:community
-    container_name: zeroq_sonarqube
+    container_name: gestiondeturnos_sonarqube
     restart: unless-stopped
     ports:
       - "9000:9000"
