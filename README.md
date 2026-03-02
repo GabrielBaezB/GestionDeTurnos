@@ -76,7 +76,7 @@ Sistema completo de turnos y colas para atención al público, inspirado en Zero
 
 ```bash
 # Clonar el proyecto
-git clone <repositorio> && cd ZeroQrobo
+git clone https://github.com/GabrielBaezB/GestionDeTurnos && cd GestionDeTurnos
 
 # Levantar servicios (PostgreSQL + Backend)
 docker-compose up -d --build
@@ -109,7 +109,7 @@ uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ## 📁 Estructura del Proyecto
 
 ```
-ZeroQrobo/
+GestionDeTurnos/
 ├── docker-compose.yml          # Orquestación: PostgreSQL + Backend
 ├── Dockerfile                  # Imagen Python 3.11-slim
 ├── requirements.txt            # Dependencias Python
@@ -375,7 +375,7 @@ POST /operators/
 
 En Docker, `DATABASE_URL` se sobreescribe a:
 ```
-postgresql://postgres:password@postgres:5432/zeroqrobo
+postgresql://postgres:password@postgres:5432/GestionDeTurnos
 ```
 
 ### Parámetros de la App (`core/config.py`)
@@ -432,5 +432,6 @@ docker-compose down -v
 ## 📄 Licencia
 
 Proyecto desarrollado para gestión de filas y turnos. Uso interno.
+
 
 
