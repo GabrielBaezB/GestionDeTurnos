@@ -15,7 +15,8 @@ class EventManager:
 
     async def subscribe(self) -> asyncio.Queue:
         """Add a new client and return its queue."""
-        q: asyncio.Queue = asyncio.Queue()
+        # Cap queue at 100 items so we purposefully drop clients who aren't reading (dirty disconnects)
+        q: asyncio.Queue = asyncio.Queue(maxsize=100)
         self._clients.append(q)
         return q
 

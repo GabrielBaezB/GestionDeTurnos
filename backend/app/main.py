@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -14,42 +14,49 @@ import asyncio
 # ─── Background Task: Reclaim Abandoned Tickets ───
 ABANDONED_TIMEOUT_MINUTES = 30
 
-async def reclaim_abandoned_tickets():
-    """Every 5 min, return tickets stuck in SERVING for > 30 min back to WAITING."""
+def _db_reclaim_job():
+    """Sync function: Query the database to find abandoned tickets."""
     from backend.app.models.ticket import Ticket, TicketStatus
     from sqlmodel import select
     from datetime import datetime, timedelta
     
+    session = next(get_session())
+    cutoff = datetime.now() - timedelta(minutes=ABANDONED_TIMEOUT_MINUTES)
+    abandoned = session.exec(
+        select(Ticket)
+        .where(Ticket.status == TicketStatus.SERVING)
+        .where(Ticket.updated_at < cutoff)
+    ).all()
+    
+    if abandoned:
+        for ticket in abandoned:
+            ticket.status = TicketStatus.WAITING
+            ticket.served_by_module_id = None
+            ticket.served_by_operator_id = None
+            ticket.updated_at = datetime.now()
+            session.add(ticket)
+        session.commit()
+        
+        # Broadcast update so monitor refreshes (Sync operation)
+        from backend.app.core.events import event_manager
+        from backend.app.api.v1.endpoints.tickets import _monitor_snapshot
+        snapshot = _monitor_snapshot(session)
+        event_manager.broadcast("tickets_reclaimed", snapshot)
+        
+        print(f"♻️ Reclaimed {len(abandoned)} abandoned ticket(s)")
+    session.close()
+
+async def reclaim_abandoned_tickets():
+    """Every 5 min, return tickets stuck in SERVING for > 30 min back to WAITING."""
     while True:
         await asyncio.sleep(300)  # Run every 5 minutes
         try:
-            session = next(get_session())
-            cutoff = datetime.now() - timedelta(minutes=ABANDONED_TIMEOUT_MINUTES)
-            abandoned = session.exec(
-                select(Ticket)
-                .where(Ticket.status == TicketStatus.SERVING)
-                .where(Ticket.updated_at < cutoff)
-            ).all()
-            
-            if abandoned:
-                for ticket in abandoned:
-                    ticket.status = TicketStatus.WAITING
-                    ticket.served_by_module_id = None
-                    ticket.served_by_operator_id = None
-                    ticket.updated_at = datetime.now()
-                    session.add(ticket)
-                session.commit()
-                
-                # Broadcast update so monitor refreshes
-                from backend.app.core.events import event_manager
-                from backend.app.api.v1.endpoints.tickets import _monitor_snapshot
-                snapshot = _monitor_snapshot(session)
-                event_manager.broadcast("tickets_reclaimed", snapshot)
-                
-                print(f"♻️ Reclaimed {len(abandoned)} abandoned ticket(s)")
-            session.close()
+            # Offloads the entire blocking process into a thread
+            await asyncio.to_thread(_db_reclaim_job)
         except Exception as e:
             print(f"❌ Error reclaiming tickets: {e}")
+            # Ensure it doesn't hard-crash the loop on a DB connectivity issue
+            await asyncio.sleep(30) 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -138,6 +145,8 @@ if os.path.exists(frontend_path):
     @app.get("/sw.js")
     async def service_worker():
         sw_path = os.path.join(frontend_path, "sw.js")
+        if not os.path.exists(sw_path):
+            raise HTTPException(status_code=404, detail="Service worker not found")
         from fastapi.responses import FileResponse
         return FileResponse(sw_path, media_type="application/javascript")
 

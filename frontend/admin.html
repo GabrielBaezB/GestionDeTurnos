@@ -429,7 +429,10 @@
             if (!options.headers) options.headers = {};
             options.headers['Authorization'] = `Bearer ${authToken}`;
             const res = await fetch(url, options);
-            if (res.status === 401) logout();
+            if (res.status === 401) {
+                alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+                logout();
+            }
             return res;
         }
 

@@ -147,7 +147,6 @@
             </div>
 
             <p id="login-error" class="text-danger text-center mt-3 mb-0 d-none"></p>
-            <p class="text-center text-secondary small mt-3 mb-0">Default: operador / 1234</p>
         </div>
     </div>
 
@@ -460,8 +459,10 @@
         }
 
         // ─── SSE for real-time waiting count ───
+        let sseReconnectAttempts = 0;
         function connectClerkSSE() {
             const es = new EventSource(`${API_URL}/tickets/stream`);
+            es.onopen = () => { sseReconnectAttempts = 0; };
             es.onmessage = (e) => {
                 try {
                     const payload = JSON.parse(e.data);
@@ -471,7 +472,10 @@
             };
             es.onerror = () => {
                 es.close();
-                setTimeout(connectClerkSSE, 3000);
+                sseReconnectAttempts++;
+                // Exponential backoff, capped at 30 seconds
+                const delay = Math.min(3000 * Math.pow(1.5, sseReconnectAttempts), 30000);
+                setTimeout(connectClerkSSE, delay);
             };
         }
 
@@ -497,7 +501,12 @@
         async function authFetch(url, options = {}) {
             if (!options.headers) options.headers = {};
             options.headers['Authorization'] = `Bearer ${authToken}`;
-            return fetch(url, options);
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                alert("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+                endSession();
+            }
+            return res;
         }
     </script>
 </body>

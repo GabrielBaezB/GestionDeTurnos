@@ -472,6 +472,7 @@
         // ─── SSE Connection ───
         let es = null;
         let lastHeartbeat = Date.now();
+        let sseReconnectAttempts = 0;
         // Visual indicator (small dot in corner)
         const statusDot = document.createElement('div');
         statusDot.style.cssText = "position:fixed;bottom:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#ef4444;transition:background 0.3s;z-index:9999;";
@@ -484,6 +485,7 @@
 
             es.onopen = () => {
                 console.log('SSE Connected');
+                sseReconnectAttempts = 0;
                 statusDot.style.background = "#22c55e"; // connected (green)
                 lastHeartbeat = Date.now();
             };
@@ -499,11 +501,13 @@
             };
 
             es.onerror = () => {
-                console.warn('SSE disconnected, reconnecting in 3s…');
+                console.warn('SSE disconnected, reconnecting...');
                 statusDot.style.background = "#ef4444"; // error (red)
                 es.close();
                 es = null;
-                setTimeout(connectSSE, 3000);
+                sseReconnectAttempts++;
+                const delay = Math.min(3000 * Math.pow(1.5, sseReconnectAttempts), 30000);
+                setTimeout(connectSSE, delay);
             };
         }
 
